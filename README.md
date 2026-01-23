@@ -53,6 +53,10 @@ Or: "Package this repo into a skill: <url>"
 /skill-manager delete <name>  # Remove a skill
 ```
 
+### Skills Directory (Env)
+
+Scripts accept an optional `skills_dir` argument; otherwise they use `CLAUDE_SKILLS_DIR` (fallbacks: `AGENTSKILLS_DIR`, `SKILLS_DIR`) and finally default to the repo's `AgentSkillsManager` directory.
+
 ### Scripts
 | Script | Purpose |
 |--------|---------|

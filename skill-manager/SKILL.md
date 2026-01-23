@@ -22,6 +22,13 @@ This skill helps you maintain your library of GitHub-wrapped skills by automatin
 **Trigger**: `/skill-manager list` or "List my skills"
 **Trigger**: `/skill-manager delete <skill_name>` or "Delete skill <skill_name>"
 
+### Skills Directory Resolution
+
+The scripts resolve the skills root with this precedence:
+1. CLI argument (e.g. `python scripts/list_skills.py <skills_dir>`)
+2. Environment variable: `CLAUDE_SKILLS_DIR` (fallbacks: `AGENTSKILLS_DIR`, `SKILLS_DIR`)
+3. Repo default: the `AgentSkillsManager` directory (skills may be directly under it or one level deeper)
+
 ### Workflow 1: Check for Updates
 
 1.  **Run Scanner**: The agent runs `scripts/scan_and_check.py` to analyze all skills.
