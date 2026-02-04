@@ -2,6 +2,8 @@ import os
 import sys
 import yaml
 import io
+import json
+import argparse
 
 
 ENV_SKILLS_DIR_KEYS = ("CLAUDE_SKILLS_DIR", "AGENTSKILLS_DIR", "SKILLS_DIR")
@@ -55,15 +57,10 @@ else:
     # Fallback for older Python versions
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
-def list_skills(skills_root):
+def gather_skills(skills_root):
+    items = []
     if not os.path.exists(skills_root):
-        print(f"Error: {skills_root} not found")
-        return
-
-    # Header with Description column
-    header = f"{'Skill Name':<20} | {'Type':<12} | {'Description':<40} | {'Ver':<8}"
-    print(header)
-    print("-" * len(header))
+        return items
 
     for skill_dir in iter_skill_dirs(skills_root):
         item = os.path.basename(skill_dir)
@@ -71,31 +68,71 @@ def list_skills(skills_root):
         skill_type = "Standard"
         version = "0.1.0"
         description = "No description"
-        
+
         if os.path.exists(skill_md):
             try:
                 with open(skill_md, "r", encoding="utf-8") as f:
                     content = f.read()
                 parts = content.split("---")
                 if len(parts) >= 3:
-                    meta = yaml.safe_load(parts[1])
-                    if "github_url" in meta:
-                        skill_type = "GitHub"
-                    version = str(meta.get("version", "0.1.0"))
-                    description = meta.get("description", "No description").replace('\n', ' ')
-            except:
-                pass
-        
+                    meta = yaml.safe_load(parts[1]) or {}
+                else:
+                    meta = {}
+                if "github_url" in meta:
+                    skill_type = "GitHub"
+                version = str(meta.get("version", "0.1.0"))
+                description = meta.get("description", "No description").replace('\n', ' ')
+            except Exception as e:
+                print(f"Warning: failed to parse {skill_md}: {e}", file=sys.stderr)
+
+        items.append({
+            "name": item,
+            "path": os.path.abspath(skill_dir),
+            "type": skill_type,
+            "version": version,
+            "description": description,
+        })
+
+    return items
+
+
+def print_text_list(items):
+    # Header with Description column
+    header = f"{'Skill Name':<20} | {'Type':<12} | {'Description':<40} | {'Ver':<8}"
+    print(header)
+    print("-" * len(header))
+
+    for it in items:
+        item = it.get('name')
+        skill_type = it.get('type', 'Standard')
+        version = it.get('version', '0.1.0')
+        description = it.get('description', 'No description')
+
         # Simple truncation for display
         if len(description) > 37:
             display_desc = description[:37] + "..."
         else:
             display_desc = description
-            
-        # Using a fixed width but acknowledging that Chinese chars take 2 cells
-        # This is a basic fix, for perfect alignment one would need wcwidth
+
         print(f"{item:<20} | {skill_type:<12} | {display_desc:<40} | {version:<8}")
 
+def main():
+    parser = argparse.ArgumentParser(description="List available Agent Skills")
+    parser.add_argument('skills_dir', nargs='?', help='Skills root directory (overrides env vars)')
+    parser.add_argument('-j', '--json', action='store_true', help='Output JSON list')
+    args = parser.parse_args()
+
+    skills_path = resolve_skills_root(args.skills_dir)
+    items = gather_skills(skills_path)
+
+    if args.json:
+        print(json.dumps(items, ensure_ascii=False, indent=2))
+    else:
+        if not items:
+            print(f"No skills found at: {skills_path}")
+        else:
+            print_text_list(items)
+
+
 if __name__ == "__main__":
-    skills_path = resolve_skills_root(sys.argv[1] if len(sys.argv) > 1 else None)
-    list_skills(skills_path)
+    main()
